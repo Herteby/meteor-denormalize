@@ -8,7 +8,7 @@ Denormalize = {}
  *
  * Set to `true` to show debug messages.
  */
-Denormalize.debug = true
+Denormalize.debug = false
 
 if(Meteor.isServer){
 	_DenormalizeCache = new Mongo.Collection('_denormalizeCache')

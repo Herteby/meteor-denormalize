@@ -33,26 +33,26 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 
 	_.defaults(options, {
 		validate: false,
-		inverse: false
+		inversed: false
 	})
 
 	check(options, {
 		cacheField: String,
 		referenceField: String,
 		validate: Boolean,
-		inverse: Boolean
+		inversed: Boolean
 	})
 
-	let inverse = options.inverse
+	let inversed = options.inversed
 	let fieldsToCopy = _.isArray(fields) ? fields : flattenFields(fields)
 	let cacheField = options.cacheField
 	let referenceField = options.referenceField
 	let parentCollection = this
 	let validate = options.validate
 
-	if(!_.includes(fieldsToCopy, childField)){
-		fieldsToCopy.push(childField)
-	}
+	
+	fieldsToCopy = _.union(fieldsToCopy, ['_id'])
+	
 	//Fields specifier for Mongo.Collection.find
 	let fieldsInFind = {_id: 0}
 	_.each(fieldsToCopy, function(field) {
@@ -69,11 +69,14 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			debug('referenceField value:', referenceFieldValue)
 
 			let cache
-			if(inverse){
-				cache = childCollection.find({[referenceField]:parent._id}), {transform: null, fields: fieldsInFind}).fetch()
+			if(inversed){
+				debug('IS INVERSED')
+				cache = childCollection.find({[referenceField]:parent._id}, {transform: null, fields: fieldsInFind}).fetch()
 			} else if(_.isArray(referenceFieldValue)){
+				debug('IS ARRAY')
 				cache = childCollection.find({_id:{$in:referenceFieldValue}}, {transform: null, fields: fieldsInFind}).fetch()
 			} else {
+				debug('ELSE')
 				cache = childCollection.findOne(referenceFieldValue, {transform: null, fields: fieldsInFind})
 			}
 			if(cache) {
@@ -90,8 +93,8 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			debug('referenceField value:', referenceFieldValue)
 
 			let cache
-			if(inverse){
-				cache = childCollection.find({[referenceField]:parent._id}), {transform: null, fields: fieldsInFind}).fetch()
+			if(inversed){
+				cache = childCollection.find({[referenceField]:parent._id}, {transform: null, fields: fieldsInFind}).fetch()
 			} else if(_.isArray(referenceFieldValue)){
 				cache = childCollection.find({_id:{$in:referenceFieldValue}}, {transform: null, fields: fieldsInFind}).fetch()
 			} else {
@@ -113,7 +116,7 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			debug('fields to copy:', fieldsToCopy)
 			debug('changed fields:', fieldValues)
 
-			if(inverse){
+			if(inversed){
 				parentCollection.find({_id:child[referenceField]}).forEach(parent => {
 					let index = parent[cacheField].length
 					this.set(parentCollection, parent._id, {[cacheField + '.' + index]:fieldValues})
@@ -121,8 +124,12 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			} else {
 				parentCollection.find({[referenceField]:child._id}).forEach(parent => {
 					if(_.isArray(parent[referenceField])){
-						let index = parent[cacheField].length
-						this.set(parentCollection, parent._id, {[cacheField + '.' + index]:fieldValues})
+						if(parent[cacheField]){
+							let index = parent[cacheField].length
+							this.set(parentCollection, parent._id, {[cacheField + '.' + index]:fieldValues})
+						} else {
+							this.set(parentCollection, parent._id, {[cacheField]:[fieldValues]})
+						}
 					} else {
 						this.set(parentCollection, parent._id, {[cacheField]:fieldValues})
 					}
@@ -137,7 +144,7 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			debug('fields to copy:', fieldsToCopy)
 			debug('changed fields:', fieldValues)
 
-			if(inverse){
+			if(inversed){
 				parentCollection.find({_id:child[referenceField]}).forEach(parent => {
 					let index = _.findIndex(parent[cacheField], {_id:child._id})
 					if(index == -1){
@@ -148,11 +155,15 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			} else {
 				parentCollection.find({[referenceField]:child._id}).forEach(parent => {
 					if(_.isArray(parent[referenceField])){
-						let index = _.findIndex(parent[cacheField], {_id:child._id})
-						if(index == -1){
-							index = parent[cacheField].length
+						if(parent[cacheField]){
+							let index = _.findIndex(parent[cacheField], {_id:child._id})
+							if(index == -1){
+								index = parent[cacheField].length
+							}
+							this.set(parentCollection, parent._id, {[cacheField + '.' + index]:fieldValues})
+						} else {
+							this.set(parentCollection, parent._id, {[cacheField]:[fieldValues]})
 						}
-						this.set(parentCollection, parent._id, {[cacheField + '.' + index]:fieldValues})
 					} else {
 						this.set(parentCollection, parent._id, {[cacheField]:fieldValues})
 					}
@@ -165,7 +176,7 @@ Mongo.Collection.prototype.cacheDoc = function(name, childCollection, fields, op
 			debug('\n'+parentCollection._name+'.cacheDoc')
 			debug(childCollection._name+'.after.remove', child._id)
 
-			if(inverse){
+			if(inversed){
 				parentCollection.find({_id:child[referenceField]}).forEach(parent => {
 					let index = _.findIndex(parent[cacheField], {_id:child._id})
 					if(index !== -1){

@@ -13,7 +13,9 @@ import _ from 'lodash'
  */
 Mongo.Collection.prototype.cacheField = function(cacheField, fields, callback, options) {
 	if(!callback) {
-		callback = array => _.compact(array).join(', ')
+		callback = function(doc, fields) {
+			return _.compact(_.map(fields, field => _.get(doc, field))).join(', ')
+		}
 	}
 
 	check(fields, [String])
@@ -41,9 +43,13 @@ Mongo.Collection.prototype.cacheField = function(cacheField, fields, callback, o
 
 			debug('\n'+collection._name+'.cacheField')
 			debug(collection._name+'.after.insert', doc._id)
+			debug(fieldValues)
 
 			let val = callback(doc, fields)
-
+			if(doc._id == 'post1'){
+				console.log('=====================================')
+			}
+			console.log('VALUE', val)
 			if(val !== undefined) {
 				this.set(collection, doc._id, {[cacheField]:val})
 			}

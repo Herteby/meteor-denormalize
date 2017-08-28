@@ -7,6 +7,7 @@ DenormalizeRun = function() {
 	this._set = {}
 }
 DenormalizeRun.prototype.set = function(collection, selector, fieldValues) {
+	if(Package['aldeed:collection2']) collection = collection._collection
 	if(!collection._denormalizeId) {
 		collection._denormalizeId = String(++lastCollectionId)
 		collections[collection._denormalizeId] = collection
@@ -25,7 +26,7 @@ DenormalizeRun.prototype.set = function(collection, selector, fieldValues) {
 	}
 }
 DenormalizeRun.prototype.unset = function(collection, selector, fields) {
-	let self = this
+	if(Package['aldeed:collection2']) collection = collection._collection
 	if(!collection._denormalizeId) {
 		collection._denormalizeId = String(++lastCollectionId)
 		collections[collection._denormalizeId] = collection
@@ -34,17 +35,28 @@ DenormalizeRun.prototype.unset = function(collection, selector, fields) {
 		selector = {_id: selector}
 	}
 	selector = EJSON.stringify(selector)
-	if(!self._set[collection._denormalizeId]) {
-		self._set[collection._denormalizeId] = {}
+	if(!this._set[collection._denormalizeId]) {
+		this._set[collection._denormalizeId] = {}
 	}
-	if(!self._set[collection._denormalizeId][selector]) {
-		self._set[collection._denormalizeId][selector] = {}
+	if(!this._set[collection._denormalizeId][selector]) {
+		this._set[collection._denormalizeId][selector] = {}
 	}
-	_.each(fields, function(field) {
-		self._set[collection._denormalizeId][selector][field] = undefined
+	_.each(fields, field => {
+		this._set[collection._denormalizeId][selector][field] = undefined
 	})
 }
-
+flattenObject = function(object, prefix){
+	prefix = prefix || ''
+	let fields = {}
+	_.each(object, (val, key) => {
+		if(typeof val == 'object' && !_.isArray(val)){
+			_.extend(fields, flattenObject(val, prefix + key + '.'))
+		} else {
+			fields[prefix + key] = val
+		}
+	})
+	return fields
+}
 DenormalizeRun.prototype.commit = function() {
 	if(this.isCommitted) return
 	_.each(this._set, function(docs, collectionId) {
@@ -54,12 +66,8 @@ DenormalizeRun.prototype.commit = function() {
 			let modifier = {}
 			let $set = {}
 			let $unset = {}
-			_.each(fieldValues, function(value, field) {
-				if(typeof value == 'object'){
-					_.each(value, (val, key) => {
-						_.set($set, field + '.' + key, val)
-					})
-				} else if(value === undefined) {
+			_.each(flattenObject(fieldValues), function(value, field) {
+				if(value === undefined) {
 					$unset[field] = 1
 				} else {
 					$set[field] = value
@@ -72,9 +80,9 @@ DenormalizeRun.prototype.commit = function() {
 				modifier.$unset = $unset
 			}
 			if(_.size(modifier)) {
-				debug('UPDATE ' + collection._name.toUpperCase())
-				debug('selector:', selector)
-				debug('modifier:', modifier)
+				debug('UPDATE ' + collection._name)
+				debug('selector:', JSON.stringify(selector))
+				debug('modifier:', JSON.stringify(modifier))
 				collection.update(selector, modifier, {multi: true})
 			}
 		})

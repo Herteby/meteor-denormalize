@@ -14,48 +14,42 @@ Package.onUse(function(api) {
   api.use([
     'check',
     'mongo',
-    'ejson'
+    'ejson',
+    'matb33:collection-hooks@0.8.4'
   ], 'server')
-
-  //Required 3rd party packages
-  api.use([
-    'matb33:collection-hooks@0.7.13',
-  ], 'server')
-
-  //Weak 3rd party packages
-  api.use([
-    'dburles:collection-helpers@1.0.0',
-    'aldeed:collection2@2.0.0',
-  ], {where: 'server', weak: true})
 
   Npm.depends({
     "lodash": "4.17.4"
   })
 
+  //Weak 3rd party packages
+  api.use([
+    'aldeed:collection2@2.0.0',
+  ], {where: 'server', weak: true})
+
   api.addFiles('denormalize-common.js')
   api.addFiles('denormalize-hooks.js', 'server')
-
   api.addFiles('methods/cacheDoc.js', 'server')
   api.addFiles('methods/cacheCount.js', 'server')
   api.addFiles('methods/cacheField.js', 'server')
-
   api.export(['Denormalize'])
 })
 
 Package.onTest(function(api) {
-  api.use('tinytest')
-  api.use(['check', 'mongo', 'autopublish', 'insecure', 'ejson'])
-
-  //Weak 3rd party packages
-  api.use([
-    'dburles:collection-helpers@1.0.0',
-    'aldeed:collection2@2.0.0',
-  ])
-
   api.use('herteby:denormalize')
+  api.use(['ecmascript', 'tinytest'])
+  api.use([
+    'check',
+    'mongo',
+    'ejson',
+    'matb33:collection-hooks@0.8.4',
+    'aldeed:collection2@2.0.0',
+  ], 'server')
+  Npm.depends({
+    "lodash": "4.17.4"
+  })
 
   api.export(['Posts', 'Comments', 'Denormalize'])
 
-  api.addFiles('test-utils.js', 'server')
-  api.addFiles('denormalize-tests-server.js', 'server')
+  api.addFiles('tests.js', 'server')
 })

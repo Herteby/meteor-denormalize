@@ -72,19 +72,20 @@ Mongo.Collection.prototype.cacheCount = function(cacheField, childCollection, re
 			debug(childCollection._name+'.after.update', doc._id)
 			debug('referenceField value:', referenceFieldValue)
 			debug('referenceField previous value:', oldReferenceFieldValue)
-
-			if(_.intersection(_.keys(fieldValues), _.keys(selector))){
-				referenceFieldValue = doc[referenceField]
-			}
-			let select = {[referenceField]:referenceFieldValue}
-			if(selector){
-				_.extend(select, selector)
-			}
+			
 			if(referenceFieldValue) {
+				let select = {[referenceField]:referenceFieldValue}
+				if(selector){
+					_.extend(select, selector)
+				}
 				this.set(parentCollection, {_id: referenceFieldValue}, {[cacheField]:childCollection.find(select).count()})
 			}
 			if(oldReferenceFieldValue) {
-				this.set(parentCollection, {_id: oldReferenceFieldValue}, {[cacheField]:childCollection.find(select).count()})
+				let oldSelect = {[referenceField]:oldReferenceFieldValue}
+				if(selector){
+					_.extend(oldSelect, selector)
+				}
+				this.set(parentCollection, {_id: oldReferenceFieldValue}, {[cacheField]:childCollection.find(oldSelect).count()})
 			}
 		},
 
